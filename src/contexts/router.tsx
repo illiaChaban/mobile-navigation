@@ -1,3 +1,4 @@
+import { last } from 'lodash'
 import { Component, createEffect, createSignal, JSXElement } from 'solid-js'
 import { createStore } from 'solid-js/store'
 import { useAtom } from '../hooks'
@@ -27,14 +28,10 @@ const createRouter = <T extends Record<string, AnyObj>>() => {
   //   data: {}
   // })
   // const path$ = useAtom(location.pathname)
-  const data$ = useAtom<{
-    path: keyof T
-    data: T[keyof T]
-  }>({
-    history: [],
-    path: location.pathname,
+  const data$ = useAtom({
+    stack: [location.pathname],
     data: {},
-  } as any)
+  })
 
   createEffect(() => {
     console.log({ data: data$() })
@@ -54,7 +51,7 @@ const createRouter = <T extends Record<string, AnyObj>>() => {
   const Route = <K extends keyof T>(p: TRouteProps<K>) => {
     return (
       <>
-        {data$().path === p.path ? (
+        {last(data$().stack) === p.path ? (
           <p.component {...(data$().data as any)} />
         ) : null}
       </>
@@ -64,7 +61,7 @@ const createRouter = <T extends Record<string, AnyObj>>() => {
   const useRouter = () => {
     return {
       navigate: <K extends keyof T>(path: K, data: T[K]) => {
-        data$({ path: path as string, data })
+        data$(d => ({ stack: [...d.stack, path as string], data }))
         // // path$(path as string)
         // setStore('path', path as string)
         // setStore('data', data)
