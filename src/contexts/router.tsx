@@ -1,6 +1,14 @@
 import { last } from 'lodash'
-import { Component, createEffect, createSignal, JSXElement } from 'solid-js'
+import {
+  Component,
+  createEffect,
+  createSignal,
+  JSXElement,
+  onMount,
+  For,
+} from 'solid-js'
 import { createStore } from 'solid-js/store'
+import { styled } from 'solid-styled-components'
 import { useAtom } from '../hooks'
 import { AnyObj, EmptyObj, FC, TPost, TPostProps } from '../types'
 
@@ -29,8 +37,7 @@ const createRouter = <T extends Record<string, AnyObj>>() => {
   // })
   // const path$ = useAtom(location.pathname)
   const data$ = useAtom({
-    stack: [location.pathname],
-    data: {},
+    stack: [{ path: location.pathname, data: {} }],
   })
 
   createEffect(() => {
@@ -38,33 +45,47 @@ const createRouter = <T extends Record<string, AnyObj>>() => {
   })
 
   type TRouterProps = {
-    children: JSXElement
+    routes: {
+      [K in keyof T]: {
+        use: FC<T[K]>
+      }
+    }
   }
   const Router = (p: TRouterProps) => {
-    return <>{p.children}</>
-  }
+    onMount(() => console.log('router'))
+    // return <>{p.children}</>
 
-  type TRouteProps<K extends keyof T> = {
-    path: K
-    component: FC<T[K]>
-  }
-  const Route = <K extends keyof T>(p: TRouteProps<K>) => {
     return (
-      <>
-        {last(data$().stack) === p.path ? (
-          <p.component {...(data$().data as any)} />
-        ) : null}
-      </>
+      <Container>
+        <For each={data$().stack}>
+          {({ path, data }) => {
+            const Component = p.routes[path].use
+            return (
+              <PageContainer>
+                <Component {...(data as any)} />
+              </PageContainer>
+            )
+          }}
+        </For>
+      </Container>
     )
   }
+
+  const Container = styled('div')`
+    height: 100vh;
+    width: 100vw;
+  `
+  const PageContainer = styled('div')`
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+  `
 
   const useRouter = () => {
     return {
       navigate: <K extends keyof T>(path: K, data: T[K]) => {
-        data$(d => ({ stack: [...d.stack, path as string], data }))
-        // // path$(path as string)
-        // setStore('path', path as string)
-        // setStore('data', data)
+        data$(d => ({ stack: [...d.stack, { path: path as string, data }] }))
       },
     }
   }
@@ -72,11 +93,10 @@ const createRouter = <T extends Record<string, AnyObj>>() => {
   return {
     useRouter,
     Router,
-    Route,
   }
 }
 
-export const { useRouter, Router, Route } = createRouter<{
+export const { useRouter, Router } = createRouter<{
   '/profile': EmptyObj
   '/post': TPostProps
 }>()
